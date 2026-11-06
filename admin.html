@@ -45,18 +45,7 @@
       letter-spacing: 3px;
     }
 
-    input[type="text"] {
-      width: 100%;
-      background: #070e1b;
-      border: 1px solid rgba(255,255,255,0.15);
-      color: #fff;
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 0.82rem;
-      margin-bottom: 10px;
-    }
-
-    /* منطقة رفع الصورة مباشرة من استوديو الهاتف */
+    /* منطقة رفع الصورة مباشرة من الهاتف */
     .upload-dropzone {
       border: 2px dashed rgba(245, 158, 11, 0.45);
       background: rgba(7, 14, 27, 0.7);
@@ -173,12 +162,16 @@
 
     #adminSection { display: none; }
   </style>
+
+  <!-- مكتبات Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
   <div class="container">
 
-    <!-- قفل الأمان السري للدخول بالرمز 1234 -->
+    <!-- قفل الأمان السري 1234 -->
     <div id="loginSection" class="card">
       <h1>🔐 دخول لوحة الإدارة</h1>
       <p class="desc">الرجاء إدخال الرمز السري للمتابعة</p>
@@ -187,7 +180,7 @@
       <div id="loginMsg" class="status-msg"></div>
     </div>
 
-    <!-- لوحة الإدارة بعد إدخال الرمز -->
+    <!-- لوحة الإدارة بعد الدخول -->
     <div id="adminSection">
       <div class="card">
         <h1>إضافة حالة جديدة</h1>
@@ -195,37 +188,25 @@
         
         <label>صورة الحالة الطبية:</label>
         
-        <!-- حقل رفع مباشر من الهاتف -->
+        <!-- حقل رفع مباشر من استوديو الهاتف -->
         <div class="upload-dropzone" onclick="document.getElementById('fileInput').click()">
           <span class="upload-icon">📁</span>
           <div class="upload-text">اضغط هنا لاختيار صورة من ألبوم الصور</div>
-          <div class="upload-sub">تُرفع الصورة سحابياً وتُنشر تلقائياً لجميع الزوار</div>
+          <div class="upload-sub">تُرفع الصورة سحابياً وتظهر فوراً للمرضى في الموقع</div>
         </div>
         <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
 
-        <!-- معاينة مصغرة قبل النشر -->
+        <!-- معاينة مصغرة -->
         <div class="preview-box" id="previewContainer">
           <img id="previewImg" src="" alt="معاينة">
           <button class="btn-remove-preview" onclick="cancelPreview()">إلغاء الصورة</button>
         </div>
 
-        <button class="btn" id="saveBtn" onclick="uploadAndSaveCase()">نشر الحالة في الموقع ✨</button>
+        <button class="btn" id="saveBtn" onclick="uploadAndPublishCase()">نشر الحالة في الموقع ✨</button>
         <div id="statusMsg" class="status-msg"></div>
-
-        <!-- ربط GitHub للمرة الأولى فقط -->
-        <div style="margin-top:16px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.08);">
-          <details style="font-size:0.75rem; color:var(--text-muted);">
-            <summary style="cursor:pointer; color:#38bdf8;">⚙️ إعدادات ربط مستودع GitHub (تُحفظ مرة واحدة)</summary>
-            <div style="margin-top:8px;">
-              <input type="text" id="ghRepoInput" placeholder="اسم المستودع (مثال: dnnnayyhh-sketch/dr-rami)">
-              <input type="password" id="ghTokenInput" placeholder="رمز GitHub Personal Access Token">
-              <button class="btn" style="background:#0284c7; color:#fff; padding:6px 10px; font-size:0.76rem;" onclick="saveGitHubSettings()">حفظ بيانات المستودع</button>
-            </div>
-          </details>
-        </div>
       </div>
 
-      <!-- قائمة الحالات الحالية وإدارتها -->
+      <!-- قائمة الحالات المنشورة حالياً مع إمكانية الحذف -->
       <div class="card">
         <h2 style="font-size:1.02rem; color:#fff; margin-bottom:12px; font-weight:800;">الحالات المنشورة حالياً في المعرض</h2>
         <div id="casesList">جارٍ التحميل...</div>
@@ -238,6 +219,19 @@
     const ADMIN_PIN = "1234";
     const IMGBB_API_KEY = "6d207e02198a847aa5ad3ac2222c813f";
 
+    // إعدادات Firebase الخاصة بالمشروع
+    const firebaseConfig = {
+      apiKey: "AIzaSyAb5POlSchsrQdO0oi6yz7oxdZuyzr_RiA",
+      authDomain: "dr-rami-58ca5.firebaseapp.com",
+      projectId: "dr-rami-58ca5",
+      storageBucket: "dr-rami-58ca5.firebasestorage.app",
+      messagingSenderId: "806864430844",
+      appId: "1:806864430844:web:639105b9856e83268fd979"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     let selectedFile = null;
 
     function checkLogin() {
@@ -245,11 +239,7 @@
       if (pin === ADMIN_PIN) {
         document.getElementById('loginSection').style.display = 'none';
         document.getElementById('adminSection').style.display = 'block';
-        
-        document.getElementById('ghRepoInput').value = localStorage.getItem('gh_repo') || "";
-        document.getElementById('ghTokenInput').value = localStorage.getItem('gh_token') || "";
-        
-        loadCases();
+        listenToAdminCases();
       } else {
         document.getElementById('loginMsg').innerText = "رمز المرور غير صحيح!";
         document.getElementById('loginMsg').style.color = "#ef4444";
@@ -275,49 +265,33 @@
       document.getElementById('previewContainer').style.display = 'none';
     }
 
-    function saveGitHubSettings() {
-      const repo = document.getElementById('ghRepoInput').value.trim();
-      const token = document.getElementById('ghTokenInput').value.trim();
-      if (repo && token) {
-        localStorage.setItem('gh_repo', repo);
-        localStorage.setItem('gh_token', token);
-        alert("تم حفظ بيانات المستودع بنجاح!");
-      }
-    }
-
-    async function loadCases() {
+    // عرض الحالات الحالية في اللوحة مع التحديث الفوري
+    function listenToAdminCases() {
       const container = document.getElementById('casesList');
-      let cases = [];
 
-      try {
-        const res = await fetch('cases.json?nocache=' + Date.now());
-        if (res.ok) cases = await res.json();
-      } catch (err) {}
-
-      if (!cases || cases.length === 0) {
-        const local = localStorage.getItem('dr_rami_gallery_cases');
-        if (local) {
-          try { cases = JSON.parse(local); } catch(e) {}
+      db.collection("cases").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+        if (snapshot.empty) {
+          container.innerHTML = "<p style='font-size:0.8rem; color:#94a3b8; text-align:center;'>لا توجد حالات منشورة حالياً.</p>";
+          return;
         }
-      }
 
-      if (!cases || cases.length === 0) {
-        container.innerHTML = "<p style='font-size:0.8rem; color:#94a3b8; text-align:center;'>لا توجد حالات منشورة حالياً.</p>";
-        return;
-      }
-
-      container.innerHTML = cases.map(item => `
-        <div class="item-row">
-          <img src="${item.image_url}" class="item-thumb" alt="">
-          <div class="item-info">
-            <div class="item-date">حالة طبية #${item.id}</div>
-          </div>
-          <button class="btn-del" onclick="deleteCase(${item.id})">حذف</button>
-        </div>
-      `).join('');
+        container.innerHTML = snapshot.docs.map(doc => {
+          const item = doc.data();
+          return `
+            <div class="item-row">
+              <img src="${item.image_url}" class="item-thumb" alt="">
+              <div class="item-info">
+                <div class="item-date">حالة طبية معتمدة</div>
+              </div>
+              <button class="btn-del" onclick="deleteCase('${doc.id}')">حذف</button>
+            </div>
+          `;
+        }).join('');
+      });
     }
 
-    async function uploadAndSaveCase() {
+    // رفع الصورة إلى ImgBB وتسجيلها مباشرة في Firestore
+    async function uploadAndPublishCase() {
       const msg = document.getElementById('statusMsg');
       const btn = document.getElementById('saveBtn');
 
@@ -332,7 +306,6 @@
       msg.style.color = "#fbbf24";
 
       try {
-        // 1. رفع الصورة مباشرة إلى ImgBB
         const formData = new FormData();
         formData.append("image", selectedFile);
 
@@ -346,107 +319,34 @@
         if (uploadData.success && uploadData.data && uploadData.data.url) {
           const directImageUrl = uploadData.data.url;
 
-          // 2. تحديث الحالات محلياً
-          let cases = [];
-          const savedData = localStorage.getItem('dr_rami_gallery_cases');
-          if (savedData) {
-            try { cases = JSON.parse(savedData); } catch(e) {}
-          }
-
-          const newCase = { id: Date.now(), image_url: directImageUrl };
-          cases.unshift(newCase);
-          localStorage.setItem('dr_rami_gallery_cases', JSON.stringify(cases));
-
-          // 3. مزامنة ونشر في مستودع GitHub
-          const ghRepo = localStorage.getItem('gh_repo');
-          const ghToken = localStorage.getItem('gh_token');
-
-          if (ghRepo && ghToken) {
-            try {
-              const fileApiUrl = `https://api.github.com/repos/${ghRepo}/contents/cases.json`;
-              let sha = "";
-              const getFileRes = await fetch(fileApiUrl, {
-                headers: { "Authorization": `token ${ghToken}` }
-              });
-              if (getFileRes.ok) {
-                const fileData = await getFileRes.json();
-                sha = fileData.sha;
-              }
-
-              const contentEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(cases, null, 2))));
-              await fetch(fileApiUrl, {
-                method: "PUT",
-                headers: {
-                  "Authorization": `token ${ghToken}`,
-                  "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                  message: "إضافة حالة جديدة للمعرض",
-                  content: contentEncoded,
-                  sha: sha || undefined
-                })
-              });
-            } catch(e) {
-              console.error("خطأ مزامنة GitHub:", e);
-            }
-          }
+          // حفظ الحالة في Firestore
+          await db.collection("cases").add({
+            image_url: directImageUrl,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
 
           msg.innerText = "تم نشر الحالة بنجاح في المعرض! ✨";
           msg.style.color = "#10b981";
           cancelPreview();
-          loadCases();
         } else {
-          throw new Error("فشل الرفع السحابي للصورة");
+          throw new Error("فشل الرفع");
         }
       } catch (err) {
-        msg.innerText = "حدث خطأ أثناء الرفع، تأكد من الاتصال بالإنترنت.";
+        msg.innerText = "حدث خطأ أثناء الرفع، تأكد من الاتصال بالإنترنت ومطابقة قواعد Firestore.";
         msg.style.color = "#ef4444";
       } finally {
         btn.disabled = false;
       }
     }
 
-    async function deleteCase(id) {
+    // حذف حالة من قاعدة البيانات
+    async function deleteCase(docId) {
       if (!confirm("هل أنت متأكد من رغبتك بحذف هذه الحالة من الموقع؟")) return;
-
-      let cases = [];
-      const savedData = localStorage.getItem('dr_rami_gallery_cases');
-      if (savedData) {
-        try { cases = JSON.parse(savedData); } catch(e) {}
+      try {
+        await db.collection("cases").doc(docId).delete();
+      } catch (err) {
+        alert("تعذر حذف الحالة.");
       }
-
-      cases = cases.filter(item => item.id !== id);
-      localStorage.setItem('dr_rami_gallery_cases', JSON.stringify(cases));
-
-      const ghRepo = localStorage.getItem('gh_repo');
-      const ghToken = localStorage.getItem('gh_token');
-
-      if (ghRepo && ghToken) {
-        try {
-          const fileApiUrl = `https://api.github.com/repos/${ghRepo}/contents/cases.json`;
-          const getFileRes = await fetch(fileApiUrl, {
-            headers: { "Authorization": `token ${ghToken}` }
-          });
-          if (getFileRes.ok) {
-            const fileData = await getFileRes.json();
-            const contentEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(cases, null, 2))));
-            await fetch(fileApiUrl, {
-              method: "PUT",
-              headers: {
-                "Authorization": `token ${ghToken}`,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                message: "حذف حالة من المعرض",
-                content: contentEncoded,
-                sha: fileData.sha
-              })
-            });
-          }
-        } catch(e) {}
-      }
-
-      loadCases();
     }
   </script>
 </body>
