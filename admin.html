@@ -45,26 +45,88 @@
       letter-spacing: 3px;
     }
 
-    input[type="text"] { 
+    input[type="text"] {
       width: 100%;
-      padding: 12px; 
-      background: #070e1b; 
-      border: 1px solid rgba(245, 158, 11, 0.4);
-      border-radius: 10px;
+      background: #070e1b;
+      border: 1px solid rgba(255,255,255,0.15);
       color: #fff;
-      font-size: 0.85rem;
-      margin-bottom: 14px;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      margin-bottom: 10px;
     }
 
-    input:focus { border-color: var(--accent-gold); outline: none; }
+    /* منطقة رفع الصورة مباشرة من استوديو الهاتف */
+    .upload-dropzone {
+      border: 2px dashed rgba(245, 158, 11, 0.45);
+      background: rgba(7, 14, 27, 0.7);
+      border-radius: 12px;
+      padding: 22px 14px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 14px;
+      transition: all 0.25s ease;
+    }
 
-    .help-link {
-      display: inline-block;
-      margin-bottom: 12px;
-      color: #38bdf8;
-      font-size: 0.78rem;
-      text-decoration: none;
+    .upload-dropzone:hover {
+      border-color: var(--accent-gold);
+      background: rgba(245, 158, 11, 0.05);
+    }
+
+    .upload-icon {
+      font-size: 2rem;
+      color: var(--accent-gold);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .upload-text {
+      font-size: 0.85rem;
       font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .upload-sub {
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    /* معاينة الصورة المختارة */
+    .preview-box {
+      display: none;
+      position: relative;
+      width: 100%;
+      height: 180px;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 14px;
+      border: 1.5px solid var(--accent-gold);
+      background: #000;
+    }
+
+    .preview-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .btn-remove-preview {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: rgba(239, 68, 68, 0.88);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
     }
     
     .btn { 
@@ -84,7 +146,7 @@
     
     .status-msg { text-align: center; font-size: 0.82rem; margin-top: 10px; font-weight: 700; }
 
-    /* عناصر قائمة الحالات المنشورة */
+    /* قائمة الحالات المنشورة */
     .item-row { 
       display: flex; 
       align-items: center; 
@@ -116,7 +178,7 @@
 
   <div class="container">
 
-    <!-- قفل الأمان السري للدخول -->
+    <!-- قفل الأمان السري للدخول بالرمز 1234 -->
     <div id="loginSection" class="card">
       <h1>🔐 دخول لوحة الإدارة</h1>
       <p class="desc">الرجاء إدخال الرمز السري للمتابعة</p>
@@ -125,21 +187,42 @@
       <div id="loginMsg" class="status-msg"></div>
     </div>
 
-    <!-- لوحة الإدارة بعد الدخول -->
+    <!-- لوحة الإدارة بعد إدخال الرمز -->
     <div id="adminSection">
       <div class="card">
         <h1>إضافة حالة جديدة</h1>
-        <p class="desc">ضع رابط الصورة المباشر لنشرها فوراً في الموقع</p>
+        <p class="desc">اختر الصورة مباشرة من الهاتف لنشرها فوراً في الموقع</p>
         
-        <label>رابط الصورة المباشر:</label>
-        <input type="text" id="imgUrlInput" placeholder="https://i.postimg.cc/... أو https://i.ibb.co/...">
+        <label>صورة الحالة الطبية:</label>
         
-        <a href="https://postimages.org/" target="_blank" class="help-link">
-          🌐 اضغط هنا لرفع الصورة ونسخ الرابط المباشر بسهولة
-        </a>
+        <!-- حقل رفع مباشر من الهاتف -->
+        <div class="upload-dropzone" onclick="document.getElementById('fileInput').click()">
+          <span class="upload-icon">📁</span>
+          <div class="upload-text">اضغط هنا لاختيار صورة من ألبوم الصور</div>
+          <div class="upload-sub">تُرفع الصورة سحابياً وتُنشر تلقائياً لجميع الزوار</div>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
 
-        <button class="btn" id="saveBtn" onclick="saveCase()">نشر الحالة في الموقع ✨</button>
+        <!-- معاينة مصغرة قبل النشر -->
+        <div class="preview-box" id="previewContainer">
+          <img id="previewImg" src="" alt="معاينة">
+          <button class="btn-remove-preview" onclick="cancelPreview()">إلغاء الصورة</button>
+        </div>
+
+        <button class="btn" id="saveBtn" onclick="uploadAndSaveCase()">نشر الحالة في الموقع ✨</button>
         <div id="statusMsg" class="status-msg"></div>
+
+        <!-- ربط GitHub للمرة الأولى فقط -->
+        <div style="margin-top:16px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.08);">
+          <details style="font-size:0.75rem; color:var(--text-muted);">
+            <summary style="cursor:pointer; color:#38bdf8;">⚙️ إعدادات ربط مستودع GitHub (تُحفظ مرة واحدة)</summary>
+            <div style="margin-top:8px;">
+              <input type="text" id="ghRepoInput" placeholder="اسم المستودع (مثال: dnnnayyhh-sketch/dr-rami)">
+              <input type="password" id="ghTokenInput" placeholder="رمز GitHub Personal Access Token">
+              <button class="btn" style="background:#0284c7; color:#fff; padding:6px 10px; font-size:0.76rem;" onclick="saveGitHubSettings()">حفظ بيانات المستودع</button>
+            </div>
+          </details>
+        </div>
       </div>
 
       <!-- قائمة الحالات الحالية وإدارتها -->
@@ -152,15 +235,20 @@
   </div>
 
   <script>
-    const SUPABASE_URL = "https://cwbmifhlpykpiwizqvnb.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_xHeBRRg1HtIYJvd_L1WGZw_Jvmoir9d";
     const ADMIN_PIN = "1234";
+    const IMGBB_API_KEY = "6d207e02198a847aa5ad3ac2222c813f";
+
+    let selectedFile = null;
 
     function checkLogin() {
-      const pin = document.getElementById('pinInput').value;
+      const pin = document.getElementById('pinInput').value.trim();
       if (pin === ADMIN_PIN) {
         document.getElementById('loginSection').style.display = 'none';
         document.getElementById('adminSection').style.display = 'block';
+        
+        document.getElementById('ghRepoInput').value = localStorage.getItem('gh_repo') || "";
+        document.getElementById('ghTokenInput').value = localStorage.getItem('gh_token') || "";
+        
         loadCases();
       } else {
         document.getElementById('loginMsg').innerText = "رمز المرور غير صحيح!";
@@ -168,76 +256,150 @@
       }
     }
 
-    async function loadCases() {
-      const container = document.getElementById('casesList');
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/cases?select=*&order=id.desc`, {
-          headers: {
-            "apikey": SUPABASE_KEY,
-            "Authorization": `Bearer ${SUPABASE_KEY}`
-          }
-        });
-        const data = await res.json();
-        
-        if (!data || data.length === 0) {
-          container.innerHTML = "<p style='font-size:0.8rem; color:#94a3b8; text-align:center;'>لا توجد حالات منشورة حالياً.</p>";
-          return;
-        }
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
 
-        container.innerHTML = data.map(item => `
-          <div class="item-row">
-            <img src="${item.image_url}" class="item-thumb" alt="">
-            <div class="item-info">
-              <div class="item-date">حالة رقم #${item.id}</div>
-            </div>
-            <button class="btn-del" onclick="deleteCase(${item.id})">حذف</button>
-          </div>
-        `).join('');
-      } catch (err) {
-        container.innerHTML = "<p style='color:#ef4444; font-size:0.8rem;'>تعذر تحميل الحالات.</p>";
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        document.getElementById('previewImg').src = evt.target.result;
+        document.getElementById('previewContainer').style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function cancelPreview() {
+      selectedFile = null;
+      document.getElementById('fileInput').value = "";
+      document.getElementById('previewContainer').style.display = 'none';
+    }
+
+    function saveGitHubSettings() {
+      const repo = document.getElementById('ghRepoInput').value.trim();
+      const token = document.getElementById('ghTokenInput').value.trim();
+      if (repo && token) {
+        localStorage.setItem('gh_repo', repo);
+        localStorage.setItem('gh_token', token);
+        alert("تم حفظ بيانات المستودع بنجاح!");
       }
     }
 
-    async function saveCase() {
-      const urlInput = document.getElementById('imgUrlInput');
-      const imageUrl = urlInput.value.trim();
+    async function loadCases() {
+      const container = document.getElementById('casesList');
+      let cases = [];
+
+      try {
+        const res = await fetch('cases.json?nocache=' + Date.now());
+        if (res.ok) cases = await res.json();
+      } catch (err) {}
+
+      if (!cases || cases.length === 0) {
+        const local = localStorage.getItem('dr_rami_gallery_cases');
+        if (local) {
+          try { cases = JSON.parse(local); } catch(e) {}
+        }
+      }
+
+      if (!cases || cases.length === 0) {
+        container.innerHTML = "<p style='font-size:0.8rem; color:#94a3b8; text-align:center;'>لا توجد حالات منشورة حالياً.</p>";
+        return;
+      }
+
+      container.innerHTML = cases.map(item => `
+        <div class="item-row">
+          <img src="${item.image_url}" class="item-thumb" alt="">
+          <div class="item-info">
+            <div class="item-date">حالة طبية #${item.id}</div>
+          </div>
+          <button class="btn-del" onclick="deleteCase(${item.id})">حذف</button>
+        </div>
+      `).join('');
+    }
+
+    async function uploadAndSaveCase() {
       const msg = document.getElementById('statusMsg');
       const btn = document.getElementById('saveBtn');
 
-      if (!imageUrl) {
-        msg.innerText = "يرجى وضع رابط الصورة أولاً!";
+      if (!selectedFile) {
+        msg.innerText = "يرجى اختيار صورة من الألبوم أولاً!";
         msg.style.color = "#ef4444";
         return;
       }
 
       btn.disabled = true;
-      msg.innerText = "جارٍ حفظ الحالة ونشرها...";
+      msg.innerText = "جارٍ رفع الصورة ونشرها في المعرض...";
       msg.style.color = "#fbbf24";
 
       try {
-        const supaRes = await fetch(`${SUPABASE_URL}/rest/v1/cases`, {
+        // 1. رفع الصورة مباشرة إلى ImgBB
+        const formData = new FormData();
+        formData.append("image", selectedFile);
+
+        const uploadRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
           method: "POST",
-          headers: {
-            "apikey": SUPABASE_KEY,
-            "Authorization": `Bearer ${SUPABASE_KEY}`,
-            "Content-Type": "application/json",
-            "Prefer": "return=representation"
-          },
-          body: JSON.stringify({
-            image_url: imageUrl
-          })
+          body: formData
         });
 
-        if (supaRes.ok) {
-          msg.innerText = "تم نشر الحالة في المعرض بنجاح! ✨";
+        const uploadData = await uploadRes.json();
+
+        if (uploadData.success && uploadData.data && uploadData.data.url) {
+          const directImageUrl = uploadData.data.url;
+
+          // 2. تحديث الحالات محلياً
+          let cases = [];
+          const savedData = localStorage.getItem('dr_rami_gallery_cases');
+          if (savedData) {
+            try { cases = JSON.parse(savedData); } catch(e) {}
+          }
+
+          const newCase = { id: Date.now(), image_url: directImageUrl };
+          cases.unshift(newCase);
+          localStorage.setItem('dr_rami_gallery_cases', JSON.stringify(cases));
+
+          // 3. مزامنة ونشر في مستودع GitHub
+          const ghRepo = localStorage.getItem('gh_repo');
+          const ghToken = localStorage.getItem('gh_token');
+
+          if (ghRepo && ghToken) {
+            try {
+              const fileApiUrl = `https://api.github.com/repos/${ghRepo}/contents/cases.json`;
+              let sha = "";
+              const getFileRes = await fetch(fileApiUrl, {
+                headers: { "Authorization": `token ${ghToken}` }
+              });
+              if (getFileRes.ok) {
+                const fileData = await getFileRes.json();
+                sha = fileData.sha;
+              }
+
+              const contentEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(cases, null, 2))));
+              await fetch(fileApiUrl, {
+                method: "PUT",
+                headers: {
+                  "Authorization": `token ${ghToken}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  message: "إضافة حالة جديدة للمعرض",
+                  content: contentEncoded,
+                  sha: sha || undefined
+                })
+              });
+            } catch(e) {
+              console.error("خطأ مزامنة GitHub:", e);
+            }
+          }
+
+          msg.innerText = "تم نشر الحالة بنجاح في المعرض! ✨";
           msg.style.color = "#10b981";
-          urlInput.value = "";
+          cancelPreview();
           loadCases();
         } else {
-          throw new Error("فشل حفظ البيانات");
+          throw new Error("فشل الرفع السحابي للصورة");
         }
       } catch (err) {
-        msg.innerText = "حدث خطأ أثناء الحفظ، تأكد من صحة الرابط.";
+        msg.innerText = "حدث خطأ أثناء الرفع، تأكد من الاتصال بالإنترنت.";
         msg.style.color = "#ef4444";
       } finally {
         btn.disabled = false;
@@ -246,18 +408,45 @@
 
     async function deleteCase(id) {
       if (!confirm("هل أنت متأكد من رغبتك بحذف هذه الحالة من الموقع؟")) return;
-      try {
-        await fetch(`${SUPABASE_URL}/rest/v1/cases?id=eq.${id}`, {
-          method: "DELETE",
-          headers: {
-            "apikey": SUPABASE_KEY,
-            "Authorization": `Bearer ${SUPABASE_KEY}`
-          }
-        });
-        loadCases();
-      } catch (err) {
-        alert("تعذر حذف الحالة.");
+
+      let cases = [];
+      const savedData = localStorage.getItem('dr_rami_gallery_cases');
+      if (savedData) {
+        try { cases = JSON.parse(savedData); } catch(e) {}
       }
+
+      cases = cases.filter(item => item.id !== id);
+      localStorage.setItem('dr_rami_gallery_cases', JSON.stringify(cases));
+
+      const ghRepo = localStorage.getItem('gh_repo');
+      const ghToken = localStorage.getItem('gh_token');
+
+      if (ghRepo && ghToken) {
+        try {
+          const fileApiUrl = `https://api.github.com/repos/${ghRepo}/contents/cases.json`;
+          const getFileRes = await fetch(fileApiUrl, {
+            headers: { "Authorization": `token ${ghToken}` }
+          });
+          if (getFileRes.ok) {
+            const fileData = await getFileRes.json();
+            const contentEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(cases, null, 2))));
+            await fetch(fileApiUrl, {
+              method: "PUT",
+              headers: {
+                "Authorization": `token ${ghToken}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                message: "حذف حالة من المعرض",
+                content: contentEncoded,
+                sha: fileData.sha
+              })
+            });
+          }
+        } catch(e) {}
+      }
+
+      loadCases();
     }
   </script>
 </body>
