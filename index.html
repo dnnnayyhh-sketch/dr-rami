@@ -439,6 +439,10 @@
       box-shadow: 0 10px 25px rgba(16, 185, 129, 0.35);
     }
   </style>
+
+  <!-- مكتبات Firebase الأساسية -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -627,36 +631,46 @@
   </div>
 
   <script>
-    // جلب الحالات وعرضها بالمعرض
-    async function loadCases() {
+    // إعدادات Firebase الخاصة بالمشروع
+    const firebaseConfig = {
+      apiKey: "AIzaSyAb5POlSchsrQdO0oi6yz7oxdZuyzr_RiA",
+      authDomain: "dr-rami-58ca5.firebaseapp.com",
+      projectId: "dr-rami-58ca5",
+      storageBucket: "dr-rami-58ca5.firebasestorage.app",
+      messagingSenderId: "806864430844",
+      appId: "1:806864430844:web:639105b9856e83268fd979"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // جلب الحالات لحظياً (Realtime) من Firestore
+    function listenToCases() {
       const gallery = document.getElementById('casesGallery');
       if (!gallery) return;
 
-      let casesList = [];
-
-      // قراءة الملف العام من المستودع
-      try {
-        const res = await fetch('cases.json?nocache=' + Date.now());
-        if (res.ok) {
-          casesList = await res.json();
+      db.collection("cases").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+        if (snapshot.empty) {
+          gallery.innerHTML = `
+            <div class="empty-gallery-box">
+                            <i class="fas fa-images"></i>
+              <p>سيتم تحديث وإضافة نتائج الحالات قريباً عبر لوحة التحكم</p>
+            </div>
+          `;
+          return;
         }
-      } catch (err) {}
 
-      // نسخة احتياطية
-      if (!casesList || casesList.length === 0) {
-        const localData = localStorage.getItem('dr_rami_gallery_cases');
-        if (localData) {
-          try { casesList = JSON.parse(localData); } catch(e) {}
-        }
-      }
-
-      if (casesList && casesList.length > 0) {
-        gallery.innerHTML = casesList.map(item => `
-          <div style="flex: 0 0 160px; height: 160px; border-radius: 14px; overflow: hidden; border: 1.5px solid rgba(245, 158, 11, 0.45); cursor: pointer; position: relative; background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.5);" onclick="openLightbox('${item.image_url}')">
-            <img src="${item.image_url}" alt="حالة طبية" style="width: 100%; height: 100%; object-fit: cover; display: block;" loading="lazy">
-          </div>
-        `).join('');
-      }
+        gallery.innerHTML = snapshot.docs.map(doc => {
+          const item = doc.data();
+          return `
+            <div style="flex: 0 0 160px; height: 160px; border-radius: 14px; overflow: hidden; border: 1.5px solid rgba(245, 158, 11, 0.45); cursor: pointer; position: relative; background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.5);" onclick="openLightbox('${item.image_url}')">
+              <img src="${item.image_url}" alt="حالة طبية" style="width: 100%; height: 100%; object-fit: cover; display: block;" loading="lazy">
+            </div>
+          `;
+        }).join('');
+      }, (error) => {
+        console.error("خطأ في قراءة الحالات:", error);
+      });
     }
 
     // نافذة تكبير الصور
@@ -679,7 +693,7 @@
       }
     }
 
-    document.addEventListener("DOMContentLoaded", loadCases);
+    document.addEventListener("DOMContentLoaded", listenToCases);
   </script>
 
 </body>
